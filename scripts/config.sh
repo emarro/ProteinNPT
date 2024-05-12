@@ -1,6 +1,6 @@
 # This config file contains the paths to all relevant data objects used by the ProteinNPT codebase. Only the next two lines should be updated based on your particular setup
-export proteinnpt_data_path="Replace this string with the path to the folder where you downloaded the core ProteinNPT files (ProteinNPT_data.zip)"
-export proteinnpt_repo_path="Replace this string with the path to the root of your local copy of the ProteinNPT folder"
+export proteinnpt_data_path="/share/kuleshov/emm392/ProteinNPT/ProteinNPT_data"
+export proteinnpt_repo_path="/share/kuleshov/emm392/ProteinNPT/ProteinNPT"
 
 # Reference files for substitution and indel assays
 export DMS_reference_file_path_subs=$proteinnpt_repo_path/proteinnpt/utils/proteingym/DMS_substitutions.csv
@@ -60,3 +60,5 @@ export ESM1v_embeddings_indels_folder=$proteinnpt_data_path/data/embeddings/inde
 # Folder containing zero-shot fitness predictions
 export zero_shot_fitness_predictions_substitutions=$proteinnpt_data_path/data/zero_shot_fitness_predictions/substitutions #Path to zero-shot predictions for substitution assays
 export zero_shot_fitness_predictions_indels=$proteinnpt_data_path/data/zero_shot_fitness_predictions/indels #Path to zero-shot predictions for indel assays
+
+source $CONDA_SHELL

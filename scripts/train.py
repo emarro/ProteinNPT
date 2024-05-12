@@ -267,6 +267,7 @@ def main(args):
         wandb.init(project=os.getenv("WANDB_PROJECT"), config=combined_dict, name=model_name, dir=args.wandb_location, save_code=True)
     
     print("Starting training")
+    print(f"Paramater count: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
     # Define trainer
     trainer = Trainer(
             model= model,

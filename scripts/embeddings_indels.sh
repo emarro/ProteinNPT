@@ -1,7 +1,22 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=2
+#SBATCH -J dumpemb                 # Job name
+#SBATCH -o /home/emm392/slurm_return/dumpemb_%j.out                  # Name of stdout output log file
+#SBATCH -e /home/emm392/slurm_return/dumpemb_%j.err                  # Name of stderr output log file
+#SBATCH --mail-user=emarro@cs.cornell.edu    # Mail info to me
+#SBATCH --mail-type=all                      # The type of stuff to email me about
+#SBATCH -t 72:00:00                          # Time limit (hh:mm:ss)
+#SBATCH --partition=gpu             # Request partition for resource allocation
+#SBATCH --constraint="gpu-mid|gpu-high"
+#SBATCH --mem=64G
+#SBATCH --gres=gpu:1
+#SBATCH --open-mode=append
+#SBATCH --requeue
+#SBATCH --array=0-250
 source ./config.sh
-source activate proteinnpt_env
+conda activate proteinnpt_env
 
-export assay_index=0 #Replace with index of desired DMS assay in the ProteinGym reference file (`utils/proteingym`)
+export assay_index=$SLURM_ARRAY_TASK_ID #Replace with index of desired DMS assay in the ProteinGym reference file (`utils/proteingym`)
 export batch_size=1
 export max_positions=1024
 
