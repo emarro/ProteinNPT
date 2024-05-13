@@ -103,6 +103,7 @@ class Trainer():
         self.model.set_device()
 
         if self.distributed_training:
+            torch.distributed.init_process_group("ncll")
             self.model = torch.nn.parallel.DistributedDataParallel(self.model)
             train_sampler = torch.utils.data.distributed.DistributedSampler(self.train_data)
         else:

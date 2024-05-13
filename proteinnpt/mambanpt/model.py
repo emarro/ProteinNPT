@@ -66,7 +66,7 @@ class MambaNPTModel(nn.Module):
             or args.aa_embeddings.startswith("ESM")
         ):
             model, _ = load_model_and_alphabet(args.embedding_model_location)
-            self.aa_embedding = model
+            self.aa_embedding = model.cpu()
             self.aa_embedding_dim = self.aa_embedding.embed_tokens.weight.shape[-1]
         elif self.args.aa_embeddings == "Tranception":
             self.aa_embedding_dim = 1280
@@ -392,9 +392,8 @@ class MambaNPTModel(nn.Module):
             col_attn_weights = []
 
         # 1 x N x L x D -> N x L x 1 x D
-        x = x.permute(1, 2, 0, 3)
-        print(x.size())
-        x = self.layers(None, inputs_embeds=x)
+        #x = x.permute(1, 2, 0, 3)
+        x, hidden_representations = self.layers(None, inputs_embeds=x)
         # for layer_idx, layer in enumerate(self.layers):
         #    x = layer(
         #        x,
@@ -408,7 +407,7 @@ class MambaNPTModel(nn.Module):
         #    if (layer_idx + 1) in repr_layers:
         #        hidden_representations[layer_idx + 1] = x.permute(2, 0, 1, 3)
         x = self.emb_layer_norm_after(x)
-        x = x.permute(2, 0, 1, 3)  # N x L x 1 x D -> 1 x N x L x D
+        #x = x.permute(2, 0, 1, 3)  # N x L x 1 x D -> 1 x N x L x D
         assert x.shape == (
             1,
             num_sequences_with_target,
@@ -416,8 +415,8 @@ class MambaNPTModel(nn.Module):
             self.args.embed_dim,
         ), "Error with axial transformer"
         # last hidden representation should have layer norm applied
-        if (layer_idx + 1) in repr_layers:
-            hidden_representations[layer_idx + 1] = x
+        #if (layer_idx + 1) in repr_layers:
+        #    hidden_representations[layer_idx + 1] = x
 
         # Loss over NPT MLM objective
         if self.aa_embedding_dim != self.args.embed_dim:

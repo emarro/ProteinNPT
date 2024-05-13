@@ -281,7 +281,8 @@ def main(args):
             MSA_weights=MSA_weights,
             MSA_start_position=MSA_start_position,
             MSA_end_position=MSA_end_position,
-            target_processing=target_processing
+            target_processing=target_processing,
+            distributed_training=False
     )
     # Load model from checkpoint or train from scratch
     if args.load_model_checkpoint:
