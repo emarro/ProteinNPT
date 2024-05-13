@@ -25,8 +25,8 @@ except ImportError:
 
 from .configuration_caduceus import CaduceusConfig, MixedCaduceusConfig
 from .modeling_rcps import RCPSAddNormWrapper, RCPSEmbedding, RCPSLMHead, RCPSMambaBlock
-from .esm_repo.esm.axial_attention import RowSelfAttention
-from .esm_repo.esm.modules import NormalizedResidualBlock
+#from .esm_repo.esm.axial_attention import RowSelfAttention
+#from .esm_repo.esm.modules import NormalizedResidualBlock
 
 
 def create_block(
@@ -128,27 +128,6 @@ def create_axial_block(
     block.layer_idx = layer_idx
     return block
 
-
-def create_attention_block(
-    d_model: int,
-    n_heads: int,
-    attention_dropout: float,
-    block_dropout: float,
-    layer_idx=None,
-    device=None,
-    dtype=None,
-):
-    """Create an RowAttention block from MSATransformer."""
-    factory_kwargs = {"device": device, "dtype": dtype}
-    layer_cls = RowSelfAttention(
-        embed_dim=d_model, num_heads=n_heads, dropout=attention_dropout
-    )
-    block = NormalizedResidualBlock(
-        layer=layer_cls, embedding_dim=d_model, dropout=block_dropout
-    )  # Wraps attention with residual connection, layer norm, and drop out. NOTE: No mixer in this block
-    block = block.to(device)
-    block.layer_idx = layer_idx
-    return block
 
 
 class BiMambaWrapper(nn.Module):
@@ -503,154 +482,6 @@ class AxialCaduceusMixerModel(nn.Module):
                 for i in range(config.n_layer * 2)
             ]
         )
-
-        norm_f = (nn.LayerNorm if not config.rms_norm else RMSNorm)(
-            config.d_model, eps=config.norm_epsilon, **factory_kwargs
-        )
-        self.norm_f = (
-            norm_f
-            if (config.fused_add_norm or not config.rcps)
-            else RCPSAddNormWrapper(norm_f)
-        )
-
-    def forward(self, input_ids, inputs_embeds=None, output_hidden_states=False):
-        """Mixer forward."""
-        all_hidden_states = []
-        if inputs_embeds is not None:
-            hidden_states = inputs_embeds
-        else:
-            hidden_states = self.embeddings(input_ids)
-
-        residual = None
-        for layer in self.layers:
-            if output_hidden_states:
-                all_hidden_states.append(hidden_states)
-            # TODO: Add support for gradient checkpointing
-            hidden_states, residual = layer(
-                hidden_states, residual, inference_params=None
-            )
-
-        if not self.fused_add_norm:
-            if self.rcps:
-                # Set prenorm=False here since we don't need the residual
-                hidden_states = self.norm_f(
-                    hidden_states, residual=residual, prenorm=False
-                )
-            else:
-                residual = (
-                    (hidden_states + residual)
-                    if residual is not None
-                    else hidden_states
-                )
-                hidden_states = self.norm_f(residual.to(dtype=self.norm_f.weight.dtype))
-        else:
-            fused_add_norm_fn = (
-                rms_norm_fn if isinstance(self.norm_f, RMSNorm) else layer_norm_fn
-            )
-            if self.rcps:
-                # Set prenorm=False here since we don't need the residual
-                hidden_states_fwd = fused_add_norm_fn(
-                    hidden_states[..., : hidden_states.shape[-1] // 2],
-                    self.norm_f.weight,
-                    self.norm_f.bias,
-                    eps=self.norm_f.eps,
-                    residual=residual[..., : hidden_states.shape[-1] // 2],
-                    prenorm=False,
-                    residual_in_fp32=self.residual_in_fp32,
-                )
-                hidden_states_rc = fused_add_norm_fn(
-                    hidden_states[..., hidden_states.shape[-1] // 2 :].flip(
-                        dims=[-2, -1]
-                    ),
-                    self.norm_f.weight,
-                    self.norm_f.bias,
-                    eps=self.norm_f.eps,
-                    residual=residual[..., hidden_states.shape[-1] // 2 :].flip(
-                        dims=[-2, -1]
-                    ),
-                    prenorm=False,
-                    residual_in_fp32=self.residual_in_fp32,
-                )
-                hidden_states = torch.cat(
-                    [hidden_states_fwd, hidden_states_rc.flip(dims=[-2, -1])], dim=-1
-                )
-            else:
-                # Set prenorm=False here since we don't need the residual
-                hidden_states = fused_add_norm_fn(
-                    hidden_states,
-                    self.norm_f.weight,
-                    self.norm_f.bias,
-                    eps=self.norm_f.eps,
-                    residual=residual,
-                    prenorm=False,
-                    residual_in_fp32=self.residual_in_fp32,
-                )
-            if output_hidden_states:
-                all_hidden_states.append(hidden_states)
-        return hidden_states, all_hidden_states
-
-
-class MixedAxialCaduceusMixerModel(nn.Module):
-    """
-    A model that swtiches between Caducues and Standard attention mechanisms
-    """
-
-    def __init__(
-        self,
-        config: MixedCaduceusConfig,
-        device=None,
-        dtype=None,
-    ) -> None:
-        super().__init__()
-        factory_kwargs = {"device": device, "dtype": dtype}
-
-        self.fused_add_norm = config.fused_add_norm
-        self.rcps = config.rcps
-        self.residual_in_fp32 = config.residual_in_fp32
-
-        self.embeddings = CaduceusEmbeddings(config, **factory_kwargs)
-
-        # Mamba changes the order of residual and layer norm:
-        # Instead of LN -> Attn / MLP -> Add, we do:
-        # Add -> LN -> Attn / MLP / Mixer, returning both the residual branch (output of Add) and
-        # the main branch (output of MLP / Mixer). The model definition is unchanged.
-        # This is for performance reason: we can fuse add + layer_norm.
-        if config.fused_add_norm:
-            if layer_norm_fn is None or rms_norm_fn is None:
-                raise ImportError("Failed to import Triton LayerNorm / RMSNorm kernels")
-
-        layers = []
-        for i in range(config.n_layer * 2):
-            axis = ((i + 1) % 2) + 1  # 1 for rows, 2 for columns, columns first.
-            block = None
-            if axis == 1:
-                block = create_attention_block(
-                    d_model=config.attn_d_model,
-                    n_heads=config.attn_n_heads,
-                    attention_dropout=config.attn_attn_dropout,
-                    block_dropout=config.attn_block_dropout,
-                    layer_idx=i,
-                    **factory_kwargs,
-                )
-            elif axis == 2:
-                block = create_axial_block(
-                    config.d_model,
-                    axis=axis,  # always columns
-                    ssm_cfg=config.ssm_cfg,
-                    norm_epsilon=config.norm_epsilon,
-                    rms_norm=config.rms_norm,
-                    residual_in_fp32=config.residual_in_fp32,
-                    fused_add_norm=config.fused_add_norm,
-                    layer_idx=i,
-                    bidirectional=config.bidirectional,
-                    bidirectional_strategy=config.bidirectional_strategy,
-                    bidirectional_weight_tie=config.bidirectional_weight_tie,
-                    rcps=config.rcps,
-                    **factory_kwargs,
-                )
-            layers.append(block)
-
-        self.layers = nn.ModuleList(layers)
 
         norm_f = (nn.LayerNorm if not config.rms_norm else RMSNorm)(
             config.d_model, eps=config.norm_epsilon, **factory_kwargs
