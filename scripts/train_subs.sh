@@ -1,7 +1,7 @@
 source ./config.sh
 conda activate proteinnpt_env
 
-export model_config_location=$ProteinNPT_config_location # [ProteinNPT_config_location|Embeddings_MSAT_config_location|Embeddings_Tranception_config_location|Embeddings_ESM1v_config_location|OHE_config_location|OHE_TranceptEVE_config_location]
+export model_config_location=$MambaNPT_config_location # [ProteinNPT_config_location|MambaNPT_config_location|Embeddings_MSAT_config_location|Embeddings_Tranception_config_location|Embeddings_ESM1v_config_location|OHE_config_location|OHE_TranceptEVE_config_location]
 export sequence_embeddings_folder=$MSAT_embeddings_folder # [MSAT_embeddings_folder|Tranception_embeddings_folder|ESM1v_embeddings_folder]
 
 export fold_variable_name='fold_random_5' #[fold_random_5 | fold_contiguous_5 | fold_modulo_5]

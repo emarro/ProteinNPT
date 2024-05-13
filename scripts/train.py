@@ -10,6 +10,7 @@ from collections import defaultdict
 from torch.nn import CrossEntropyLoss
 
 from proteinnpt.proteinnpt.model import ProteinNPTModel
+from proteinnpt.mambanpt.model import MambaNPTModel
 from proteinnpt.baselines.model import AugmentedPropertyPredictor
 from proteinnpt.utils.esm.data import Alphabet
 from proteinnpt.utils.tranception.model_pytorch import get_tranception_tokenizer
@@ -51,7 +52,7 @@ def setup_config_and_paths(args):
             "Tranception_pred": "Tranception_L",
             "DeepSequence_pred": "DeepSequence_ensemble"
         }
-    if args.model_type=="ProteinNPT": zero_shot_predictions_mapping["ProteinNPT"]=zero_shot_predictions_mapping[args.aa_embeddings+"_pred"]
+    if args.model_type=="ProteinNPT" or args.model_type=="MambaNPT": zero_shot_predictions_mapping["ProteinNPT"]=zero_shot_predictions_mapping[args.aa_embeddings+"_pred"]
     if args.augmentation=="zero_shot_fitness_predictions_auxiliary_labels": # Add auxiliary label to target_config
         assert args.zero_shot_fitness_predictions_location is not None, "Location of zero-shot fitness predictions to use as auxiliary labels not properly referenced"
         print("Using zero-shot fitness predictions as auxiliary labels")
@@ -211,6 +212,8 @@ def main(args):
     
     if args.model_type=="ProteinNPT":
         model = ProteinNPTModel(args, alphabet)
+    if args.model_type=="MambaNPT":
+        model = MambaNPTModel(args, alphabet)
     elif args.model_type in ["MSA_Transformer_pred", "ESM1v_pred", "Tranception_pred", "TranceptEVE_pred", "Linear_Embedding_pred", "DeepSequence_pred"] or args.model_type.startswith("ESM2"):
         model = AugmentedPropertyPredictor(args, alphabet)
     if args.frozen_embedding_parameters and args.aa_embeddings in ["MSA_Transformer", "ESM1v", "Tranception"]:
@@ -298,7 +301,7 @@ def main(args):
     print('Final training step: {} | Num training epochs: {} | Total train time: {} hrs'.format(trainer_final_status['total_training_steps'], trainer_final_status['total_training_epochs'], str(trainer_final_status['total_train_time'] / 3600)))
 
     # Eval performance on test set & log to wandb & persist predictions / performance to disk
-    if args.model_type == "ProteinNPT":
+    if args.model_type == "ProteinNPT" or args.model_type == "MambaNPT":
         test_eval_results = trainer.eval(
             test_data=test_data,
             train_data=train_data,

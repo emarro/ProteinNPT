@@ -7,8 +7,8 @@ from torch.optim import AdamW
 from torch.nn import CrossEntropyLoss, MSELoss
 from transformers import ConvBertConfig, ConvBertLayer
 
-from configuration_caduceus import CaduceusConfig
-from modeling_caduceus import AxialCaduceusMixerModel
+from .modeling_caduceus import AxialCaduceusMixerModel
+from .configuration_caduceus import CaduceusConfig
 from ..utils.esm.modules import (
     AxialTransformerLayer,
     LearnedPositionalEmbedding,

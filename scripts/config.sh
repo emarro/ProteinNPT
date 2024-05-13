@@ -9,7 +9,7 @@ export DMS_reference_file_path_multi_objectives=$proteinnpt_repo_path/proteinnpt
 
 # Model config files
 export ProteinNPT_config_location=$proteinnpt_repo_path/proteinnpt/proteinnpt/model_configs/PNPT_final.json
-export MambaNPT_config_location=$proteinnpt_repo_path/proteinnpt/mambanpt/model_configs/MNPT_final.json
+export MambaNPT_config_location=$proteinnpt_repo_path/proteinnpt/mambanpt/model_configs/MNPT.json
 export Embeddings_MSAT_config_location=$proteinnpt_repo_path/proteinnpt/baselines/model_configs/Embeddings_MSAT_final.json
 export Embeddings_Tranception_config_location=$proteinnpt_repo_path/proteinnpt/baselines/model_configs/Embeddings_Tranception_final.json
 export Embeddings_ESM1v_config_location=$proteinnpt_repo_path/proteinnpt/baselines/model_configs/Embeddings_ESM1v_final.json
