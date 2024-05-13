@@ -52,7 +52,7 @@ def setup_config_and_paths(args):
             "Tranception_pred": "Tranception_L",
             "DeepSequence_pred": "DeepSequence_ensemble"
         }
-    if args.model_type=="ProteinNPT" or args.model_type=="MambaNPT": zero_shot_predictions_mapping["ProteinNPT"]=zero_shot_predictions_mapping[args.aa_embeddings+"_pred"]
+    if args.model_type=="ProteinNPT" or args.model_type=="MambaNPT": zero_shot_predictions_mapping[args.model_type]=zero_shot_predictions_mapping[args.aa_embeddings+"_pred"]
     if args.augmentation=="zero_shot_fitness_predictions_auxiliary_labels": # Add auxiliary label to target_config
         assert args.zero_shot_fitness_predictions_location is not None, "Location of zero-shot fitness predictions to use as auxiliary labels not properly referenced"
         print("Using zero-shot fitness predictions as auxiliary labels")

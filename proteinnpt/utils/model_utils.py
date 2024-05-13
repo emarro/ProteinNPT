@@ -139,7 +139,7 @@ class Trainer():
         prior_log_time = time.time()
         total_train_time = 0
         log_train_total_loss = 0
-        if self.model.model_type=="ProteinNPT":
+        if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
             log_train_reconstruction_loss = 0
             log_train_num_masked_tokens = 0
             log_train_num_target_masked_tokens_dict = defaultdict(int)
@@ -154,7 +154,7 @@ class Trainer():
             optimizer.zero_grad(set_to_none=True)
             lr = scheduler(training_step)
             update_lr_optimizer(optimizer, lr)
-            reconstruction_loss_coeff = get_reconstruction_loss_coefficient(training_step, num_total_training_steps=self.args.num_total_training_steps) if (self.model.model_type=="ProteinNPT" and not self.model.PNPT_no_reconstruction_error) else 0
+            reconstruction_loss_coeff = get_reconstruction_loss_coefficient(training_step, num_total_training_steps=self.args.num_total_training_steps) if ((self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT") and not self.model.PNPT_no_reconstruction_error) else 0
             for gradient_accum_step in range(self.args.gradient_accumulation):
                 try:
                     batch = next(train_iterator)
@@ -162,7 +162,7 @@ class Trainer():
                     num_epochs +=1
                     train_iterator = iter(train_loader)
                     batch = next(train_iterator)
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     processed_batch = proteinnpt.proteinnpt.data_processing.process_batch(
                         batch = batch,
                         model = self.model,
@@ -203,7 +203,7 @@ class Trainer():
                 
                 if self.args.training_fp16:
                     with torch.cuda.amp.autocast():
-                        if self.model.model_type=="ProteinNPT":
+                        if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                             output = self.model(
                                 tokens=processed_batch['masked_tokens'],
                                 targets=processed_batch['masked_targets'],
@@ -231,7 +231,7 @@ class Trainer():
                             )
                         scaler.scale(total_loss).backward()
                 else:
-                    if self.model.model_type=="ProteinNPT":
+                    if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                         output = self.model(
                             tokens=processed_batch['masked_tokens'],
                             targets=processed_batch['masked_targets'],
@@ -270,7 +270,7 @@ class Trainer():
                 optimizer.step()
 
             log_train_total_loss += total_loss
-            if self.model.model_type=="ProteinNPT": 
+            if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT": 
                 num_masked_tokens_in_batch = (~processed_batch['token_labels'].eq(-100)).sum().item()
                 log_train_num_masked_tokens += num_masked_tokens_in_batch
                 log_train_reconstruction_loss += reconstruction_loss * num_masked_tokens_in_batch
@@ -294,7 +294,7 @@ class Trainer():
                     "training_step": training_step, 
                     "step_time": delta_time_since_last_log / (self.args.num_logging_training_steps)
                 }
-                if self.model.model_type=="ProteinNPT": 
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT": 
                     train_logs["train_total_loss_per_step"]: log_train_total_loss / self.args.num_logging_training_steps
                     train_logs["train_reconstruction_loss_per_masked_token"] = log_train_reconstruction_loss.item() / log_train_num_masked_tokens
                     for target_name in self.model.target_names:
@@ -306,7 +306,7 @@ class Trainer():
                 wandb.log(train_logs)
                 log_train_total_loss = 0
                 log_train_target_prediction_loss_dict = defaultdict(int)
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     log_train_reconstruction_loss = 0
                     log_train_num_masked_tokens = 0
                     log_train_num_target_masked_tokens_dict = defaultdict(int)
@@ -326,7 +326,7 @@ class Trainer():
                 )
             
             if training_step % self.args.num_eval_steps == 0 and self.args.use_validation_set:
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     eval_results = self.eval(
                         test_data=self.val_data,
                         train_data=self.train_data,
@@ -390,7 +390,7 @@ class Trainer():
             
             num_eval_batches = 0
             eval_total_loss = 0
-            if self.model.model_type=="ProteinNPT": 
+            if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":  
                 eval_reconstruction_loss = 0
                 eval_num_masked_tokens = 0
                 eval_num_masked_targets = defaultdict(int)
@@ -407,7 +407,7 @@ class Trainer():
                 if output_all_predictions: 
                     output_scores['mutated_sequence'] += list(zip(*batch['mutant_mutated_seq_pairs']))[1]
                     output_scores['mutant'] += list(zip(*batch['mutant_mutated_seq_pairs']))[0]
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     processed_batch = proteinnpt.proteinnpt.data_processing.process_batch(
                         batch = batch,
                         model = self.model,
@@ -446,7 +446,7 @@ class Trainer():
                 else:
                     zero_shot_fitness_predictions = None
                 
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     output = self.model(
                         tokens=processed_batch['masked_tokens'],
                         targets=processed_batch['masked_targets'],
@@ -478,7 +478,7 @@ class Trainer():
                 
                 num_eval_batches += 1
                 eval_total_loss += batch_loss.item()
-                if self.model.model_type=="ProteinNPT":
+                if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                     num_masked_tokens_in_batch = (~processed_batch['token_labels'].eq(100)).sum().item()  #processed_batch['masked_tokens'].eq(self.model.alphabet.mask_idx).sum().item()
                     eval_num_masked_tokens += num_masked_tokens_in_batch
                     eval_reconstruction_loss += batch_reconstruction_loss.item() * num_masked_tokens_in_batch
@@ -494,7 +494,7 @@ class Trainer():
                     for target_name in self.model.target_names:
                         eval_target_prediction_loss_dict[target_name] += batch_target_prediction_loss_dict[target_name].item() * len(batch['mutant_mutated_seq_pairs'])
                 if output_all_predictions:
-                    num_of_mutated_seqs_to_score = processed_batch['num_of_mutated_seqs_to_score'] if self.model.model_type=="ProteinNPT" else len(processed_batch['mutant_mutated_seq_pairs'])
+                    num_of_mutated_seqs_to_score = processed_batch['num_of_mutated_seqs_to_score'] if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT" else len(processed_batch['mutant_mutated_seq_pairs'])
                     for target_name in self.model.target_names:
                         output_scores['predictions_'+target_name] += list(output["target_predictions"][target_name][:num_of_mutated_seqs_to_score].cpu().numpy())
                         output_scores['labels_'+target_name] += list(processed_batch['target_labels'][target_name][:num_of_mutated_seqs_to_score].cpu().numpy())
@@ -515,7 +515,7 @@ class Trainer():
 
         # Normalization
         for target_name in self.model.target_names:
-            if self.model.model_type=="ProteinNPT":
+            if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                 eval_target_prediction_loss_dict[target_name] /= eval_num_masked_targets[target_name] # We track exactly how many targets were masked across batches to account for potential discrepancies across batches (eg., last abtch may not have the same number of labels)
             else:
                 eval_target_prediction_loss_dict[target_name] /= num_predicted_targets
@@ -529,7 +529,7 @@ class Trainer():
             eval_results['col_attentions'] = torch.stack(col_attentions, dim=0).cpu().numpy()
             eval_results['row_attentions'] = torch.stack(row_attentions, dim=0).cpu().numpy()
         
-        if self.model.model_type=="ProteinNPT":
+        if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
             eval_results['eval_reconstruction_loss'] = eval_reconstruction_loss / eval_num_masked_tokens
             eval_results['eval_num_masked_tokens'] = eval_num_masked_tokens
             eval_results['eval_num_masked_targets'] = eval_num_masked_targets

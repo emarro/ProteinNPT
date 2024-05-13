@@ -156,7 +156,7 @@ class MambaNPTModel(nn.Module):
         #
         cad_config = CaduceusConfig(
             d_model=self.args.embed_dim,
-            n_layer=self.ars.num_protein_npt_layers,
+            n_layer=self.args.num_protein_npt_layers,
             vocab_size=self.alphabet_size,
             ssm_cfg=ssm_cfg,
         )
@@ -393,6 +393,7 @@ class MambaNPTModel(nn.Module):
 
         # 1 x N x L x D -> N x L x 1 x D
         x = x.permute(1, 2, 0, 3)
+        print(x.size())
         x = self.layers(None, inputs_embeds=x)
         # for layer_idx, layer in enumerate(self.layers):
         #    x = layer(
