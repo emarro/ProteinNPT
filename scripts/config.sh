@@ -1,6 +1,7 @@
 # This config file contains the paths to all relevant data objects used by the ProteinNPT codebase. Only the next two lines should be updated based on your particular setup
 export proteinnpt_data_path="/share/kuleshov/emm392/ProteinNPT/ProteinNPT_data"
 export proteinnpt_repo_path="/share/kuleshov/emm392/ProteinNPT/ProteinNPT"
+export WANDB_PROJECT="MambaNPT"
 
 # Reference files for substitution and indel assays
 export DMS_reference_file_path_subs=$proteinnpt_repo_path/proteinnpt/utils/proteingym/DMS_substitutions.csv
