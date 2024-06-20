@@ -247,6 +247,7 @@ class Trainer():
                             MLM_reconstruction_loss_weight=reconstruction_loss_coeff, 
                             label_smoothing=self.args.label_smoothing
                         )
+                        print("reconstruction_loss:", reconstruction_loss)
                         if total_loss.item() > 10.0 and training_step >= 100:
                             print("High training loss detected: {}".format(total_loss.item()))
                     else:
@@ -293,6 +294,7 @@ class Trainer():
                 prior_log_time = time_end_step
                 train_logs = {
                     "training_step": training_step, 
+                    "learning_rate": lr,
                     "step_time": delta_time_since_last_log / (self.args.num_logging_training_steps)
                 }
                 if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT": 
