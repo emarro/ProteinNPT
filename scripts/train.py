@@ -266,7 +266,7 @@ def main(args):
         MSA_weights = None
     
     if args.use_wandb:
-        combined_dict = {**vars(args), "parameter_count": sum(p.numel() for p in model.parameters()), "assay_id": assay_id, "UniProt_id": UniProt_id}
+        combined_dict = {**vars(args), "parameter_count": sum(p.numel() for p in model.parameters() if p.requires_grad), "assay_id": assay_id, "UniProt_id": UniProt_id}
         wandb.init(project=os.getenv("WANDB_PROJECT"), config=combined_dict, name=model_name, dir=args.wandb_location, save_code=True)
     
     print("Starting training")
@@ -422,6 +422,7 @@ if __name__ == "__main__":
     
     setup_config_and_paths(args)
     print("Embeddings folder:", args.embedding_model_location)
+    print("Num MSA per eval:", args.num_MSA_sequences_per_eval_instance)
 
     if (args.MSA_start is None) or (args.MSA_end is None):
         if args.MSA_location is not None: print("MSA start and end not provided -- Assuming the MSA is covering the full WT sequence")
