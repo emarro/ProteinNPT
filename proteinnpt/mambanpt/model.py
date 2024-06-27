@@ -287,16 +287,19 @@ class MambaNPTModel(nn.Module):
                 tokens.ndim
             )
             batch_size, seqlen = tokens.size()  # N, L (seqs with labels, seq length)
+            #print(f"Seqs with labels (N): {batch_size}, Seq length (L): {seqlen}")
 
         if sequence_embeddings is not None:
             x = sequence_embeddings.to(self.device)
         else:
             if self.args.aa_embeddings == "MSA_Transformer":
+                print("Computing MSA embedding")
                 output = self.aa_embedding(tokens, repr_layers=[12])
                 x = output["representations"][12][:]  # N, B, L, D
                 x = x[
                     :, 0, :, :
                 ]  # N, L, D. #In each MSA batch the first sequence is what we care about. The other MSA sequences were just to compute embeddings and logits
+                # Seqs with Labels, seq_len, Embed_dim
             elif self.args.aa_embeddings.startswith("ESM"):
                 if self.args.aa_embeddings == "ESM1v":
                     last_layer_index = 33
