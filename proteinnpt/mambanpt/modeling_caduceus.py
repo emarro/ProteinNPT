@@ -7,7 +7,10 @@ from functools import partial
 from typing import Optional, Tuple, Union
 
 import torch
-from mamba_ssm.modules.mamba_simple import Mamba, Block
+#from mamba_ssm.modules.mamba_simple import Mamba, Block
+from mamba_ssm.modules.block import Block
+from mamba_ssm.modules.mamba_simple import Mamba
+from mamba_ssm.modules.mlp import GatedMLP
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.parallel import parallel_apply
@@ -19,7 +22,7 @@ from transformers.modeling_outputs import (
 )
 
 try:
-    from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
+    from mamba_ssm.ops.triton.layer_norm import RMSNorm, layer_norm_fn, rms_norm_fn
 except ImportError:
     RMSNorm, layer_norm_fn, rms_norm_fn = None, None, None
 
@@ -80,6 +83,7 @@ def create_block(
 
 def create_axial_block(
     d_model,
+    d_intermediate,
     axis,
     ssm_cfg=None,
     norm_epsilon=1e-5,
@@ -114,6 +118,11 @@ def create_axial_block(
         **bidirectional_kwargs,
         **factory_kwargs,
     )
+    if d_intermediate == 0:
+        mlp_cls = nn.Identity
+    else:
+        mlp_cls = partial(GatedMLP, hidden_features=d_intermediate, out_features=d_model, **factory_kwargs)
+    #return Block(d_model, mixer_cls, residual_in_fp32=residual_in_fp32)
     norm_cls = partial(
         nn.LayerNorm if not rms_norm else RMSNorm, eps=norm_epsilon, **factory_kwargs
     )
@@ -121,6 +130,7 @@ def create_axial_block(
     block = block_cls(
         d_model,
         mixer_cls,
+        mlp_cls,
         norm_cls=norm_cls,
         fused_add_norm=fused_add_norm,
         residual_in_fp32=residual_in_fp32,
@@ -466,6 +476,7 @@ class AxialCaduceusMixerModel(nn.Module):
             [
                 create_axial_block(
                     config.d_model,
+                    config.d_intermediate,
                     axis=((i + 1) % 2) + 1,  # (i%2) + 1 for columns first
                     ssm_cfg=config.ssm_cfg,
                     norm_epsilon=config.norm_epsilon,
