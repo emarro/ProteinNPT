@@ -8,6 +8,7 @@ import wandb
 import torch
 from collections import defaultdict
 from torch.nn import CrossEntropyLoss
+#from torchinfo import summary
 
 from proteinnpt.proteinnpt.model import ProteinNPTModel
 from proteinnpt.mambanpt.model import MambaNPTModel
@@ -17,6 +18,8 @@ from proteinnpt.utils.tranception.model_pytorch import get_tranception_tokenizer
 from proteinnpt.utils.data_utils import get_train_val_test_data, standardize, pnpt_count_non_nan, pnpt_spearmanr
 from proteinnpt.utils.msa_utils import process_MSA
 from proteinnpt.utils.model_utils import Trainer
+import faulthandler
+faulthandler.enable()
 
 def setup_config_and_paths(args):
     # All parameters that are not defined by end user are fetched from the config file
@@ -270,7 +273,17 @@ def main(args):
         wandb.init(project=os.getenv("WANDB_PROJECT"), config=combined_dict, name=model_name, dir=args.wandb_location, save_code=True)
     
     print("Starting training")
+    num_seqs = len(MSA_sequences)
+    seq_len = MSA_end_position - MSA_start_position + 1
+    shape = (num_seqs, seq_len, args.embed_dim)
+    print(f"Shape: ({shape})")
+    print(MSA_weights.size)
     print(f"Paramater count: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    print((train_data))
+    #print(train_data.take(0))
+    #print(summary(model, shape))
+    print(model)
+    #assert False
     # Define trainer
     trainer = Trainer(
             model= model,
@@ -374,6 +387,7 @@ if __name__ == "__main__":
     parser.add_argument('--embed_dim', default=None, type=int, help='Embedding dimension')
     parser.add_argument('--ffn_embed_dim', default=None, type=int, help='Feedforward embedding dimension')
     parser.add_argument('--attention_heads', default=None, type=int, help='Number of attention heads')
+    parser.add_argument('--hybrid', default=False, action='store_true', help='Wheter to use a hybrid SSM arch')
     parser.add_argument('--conv_kernel_size', default=None, type=int, help='Size of convolutional kernel')
     parser.add_argument('--weight_decay', default=None, type=float, help='Weight decay to apply to network weights during training')
     parser.add_argument('--dropout', default=None, type=float, help='Dropout')
