@@ -56,11 +56,11 @@ class MambaNPTModel(nn.Module):
         self.deactivate_col_attention = False
         self.tranception_attention = False
 
-        assert (
-            self.args.embed_dim % self.args.attention_heads == 0
-        ), "Embedding size {} needs to be a multiple of number of heads {}".format(
-            self.args.embed_dim, self.args.attention_heads
-        )
+        #assert (
+        #    self.args.embed_dim % self.args.attention_heads == 0
+        #), "Embedding size {} needs to be a multiple of number of heads {}".format(
+        #    self.args.embed_dim, self.args.attention_heads
+        #)
         if (
             self.args.aa_embeddings == "MSA_Transformer"
             or args.aa_embeddings.startswith("ESM")
