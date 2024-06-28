@@ -10,6 +10,7 @@ import torch
 #from mamba_ssm.modules.mamba_simple import Mamba, Block
 from mamba_ssm.modules.block import Block
 from mamba_ssm.modules.mamba_simple import Mamba
+from mamba_ssm.modules.mamba2 import Mamba2
 from mamba_ssm.modules.mlp import GatedMLP
 from torch import nn
 from torch.nn import functional as F
@@ -160,9 +161,9 @@ class BiMambaWrapper(nn.Module):
             )
         self.bidirectional = bidirectional
         self.bidirectional_strategy = bidirectional_strategy
-        self.mamba_fwd = Mamba(d_model=d_model, **mamba_kwargs)
+        self.mamba_fwd = Mamba2(d_model=d_model, **mamba_kwargs)
         if bidirectional:
-            self.mamba_rev = Mamba(d_model=d_model, **mamba_kwargs)
+            self.mamba_rev = Mamba2(d_model=d_model, **mamba_kwargs)
             if (
                 bidirectional_weight_tie
             ):  # Tie in and out projections (where most of param count lies)
@@ -221,10 +222,10 @@ class AxialBiMambaWrapper(nn.Module):
             )
         self.bidirectional = bidirectional
         self.bidirectional_strategy = bidirectional_strategy
-        self.mamba_fwd = Mamba(d_model=d_model, **mamba_kwargs)
+        self.mamba_fwd = Mamba2(d_model=d_model, **mamba_kwargs)
         self.axis = axis
         if bidirectional:
-            self.mamba_rev = Mamba(d_model=d_model, **mamba_kwargs)
+            self.mamba_rev = Mamba2(d_model=d_model, **mamba_kwargs)
             if (
                 bidirectional_weight_tie
             ):  # Tie in and out projections (where most of param count lies)
