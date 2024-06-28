@@ -132,6 +132,11 @@ class MambaNPTModel(nn.Module):
             "bias": False,
             "use_fast_path": True,
         }
+        attn_cfg = {
+                #'embed_dim': self.args.embed_dim,
+                'num_heads': self.args.attention_heads,
+                'mlp_dim': self.args.ffn_embed_dim
+        }
 
         # self.layers = nn.ModuleList(
         #    [
@@ -157,8 +162,10 @@ class MambaNPTModel(nn.Module):
         cad_config = CaduceusConfig(
             d_model=self.args.embed_dim,
             n_layer=self.args.num_protein_npt_layers,
+            hybrid=self.args.hybrid,
             vocab_size=self.alphabet_size,
             ssm_cfg=ssm_cfg,
+            attn_cfg = attn_cfg
         )
         self.layers = AxialCaduceusMixerModel(
             cad_config, device=self.device

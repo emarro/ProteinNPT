@@ -18,8 +18,10 @@ class CaduceusConfig(PretrainedConfig):
         d_model: int = 2560,
         d_intermediate: int = 0,
         n_layer: int = 64,
+        hybrid: bool = False,
         vocab_size: int = 50277,
         ssm_cfg: Optional[dict] = None,
+        attn_cfg: Optional[dict] = None,
         rms_norm: bool = True,
         residual_in_fp32: bool = True,
         fused_add_norm: bool = True,
@@ -40,8 +42,10 @@ class CaduceusConfig(PretrainedConfig):
         self.d_model = d_model
         self.d_intermediate = d_intermediate
         self.n_layer = n_layer
+        self.hybrid = hybrid
         self.vocab_size = vocab_size
         self.ssm_cfg = ssm_cfg
+        self.attn_cfg = attn_cfg
         self.rms_norm = rms_norm
         self.residual_in_fp32 = residual_in_fp32
         self.fused_add_norm = fused_add_norm

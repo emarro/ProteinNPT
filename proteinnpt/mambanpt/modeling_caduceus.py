@@ -12,6 +12,7 @@ from mamba_ssm.modules.block import Block
 from mamba_ssm.modules.mamba_simple import Mamba
 from mamba_ssm.modules.mamba2 import Mamba2
 from mamba_ssm.modules.mlp import GatedMLP
+from mamba_ssm.modules.mha import MHA
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.parallel import parallel_apply
@@ -86,7 +87,9 @@ def create_axial_block(
     d_model,
     d_intermediate,
     axis,
+    hybrid=False,
     ssm_cfg=None,
+    attn_cfg=None,
     norm_epsilon=1e-5,
     rms_norm=False,
     residual_in_fp32=False,
@@ -111,14 +114,17 @@ def create_axial_block(
         "bidirectional_strategy": bidirectional_strategy,
         "bidirectional_weight_tie": bidirectional_weight_tie,
     }
-    mixer_cls = partial(
-        AxialBiMambaWrapper,
-        axis=axis,
-        layer_idx=layer_idx,
-        **ssm_cfg,
-        **bidirectional_kwargs,
-        **factory_kwargs,
-    )
+    if axis==1 and layer_idx < 2 and hybrid: #first row-wise model
+        mixer_cls = partial(MHA, layer_idx=layer_idx, **attn_cfg, **factory_kwargs)
+    else:
+        mixer_cls = partial(
+            AxialBiMambaWrapper,
+            axis=axis,
+            layer_idx=layer_idx,
+            **ssm_cfg,
+            **bidirectional_kwargs,
+            **factory_kwargs,
+        )
     if d_intermediate == 0:
         mlp_cls = nn.Identity
     else:
@@ -161,9 +167,9 @@ class BiMambaWrapper(nn.Module):
             )
         self.bidirectional = bidirectional
         self.bidirectional_strategy = bidirectional_strategy
-        self.mamba_fwd = Mamba2(d_model=d_model, **mamba_kwargs)
+        self.mamba_fwd = Mamba(d_model=d_model, **mamba_kwargs)
         if bidirectional:
-            self.mamba_rev = Mamba2(d_model=d_model, **mamba_kwargs)
+            self.mamba_rev = Mamba(d_model=d_model, **mamba_kwargs)
             if (
                 bidirectional_weight_tie
             ):  # Tie in and out projections (where most of param count lies)
@@ -222,10 +228,10 @@ class AxialBiMambaWrapper(nn.Module):
             )
         self.bidirectional = bidirectional
         self.bidirectional_strategy = bidirectional_strategy
-        self.mamba_fwd = Mamba2(d_model=d_model, **mamba_kwargs)
+        self.mamba_fwd = Mamba(d_model=d_model, **mamba_kwargs)
         self.axis = axis
         if bidirectional:
-            self.mamba_rev = Mamba2(d_model=d_model, **mamba_kwargs)
+            self.mamba_rev = Mamba(d_model=d_model, **mamba_kwargs)
             if (
                 bidirectional_weight_tie
             ):  # Tie in and out projections (where most of param count lies)
@@ -472,6 +478,12 @@ class AxialCaduceusMixerModel(nn.Module):
         if config.fused_add_norm:
             if layer_norm_fn is None or rms_norm_fn is None:
                 raise ImportError("Failed to import Triton LayerNorm / RMSNorm kernels")
+        attn_cfg = {
+            'embed_dim': config.d_model,
+            'num_heads': 12,
+            'mlp_dim': 400,
+        }
+
 
         self.layers = nn.ModuleList(
             [
@@ -479,7 +491,9 @@ class AxialCaduceusMixerModel(nn.Module):
                     config.d_model,
                     config.d_intermediate,
                     axis=((i + 1) % 2) + 1,  # (i%2) + 1 for columns first
+                    hybrid=config.hybrid,
                     ssm_cfg=config.ssm_cfg,
+                    attn_cfg=config.attn_cfg,
                     norm_epsilon=config.norm_epsilon,
                     rms_norm=config.rms_norm,
                     residual_in_fp32=config.residual_in_fp32,
