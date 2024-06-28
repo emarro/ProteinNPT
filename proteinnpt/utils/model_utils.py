@@ -203,7 +203,7 @@ class Trainer():
                     zero_shot_fitness_predictions = None
                 
                 if self.args.training_fp16:
-                    with torch.cuda.amp.autocast(enabled=True, dtype=torch.bfloat16):
+                    with torch.cuda.amp.autocast():
                         if self.model.model_type=="ProteinNPT" or self.model.model_type=="MambaNPT":
                             output = self.model(
                                 tokens=processed_batch['masked_tokens'],
