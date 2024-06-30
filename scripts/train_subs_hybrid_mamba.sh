@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=2
-#SBATCH -J reg_hybrid_3e-4_900k_mnpt                # Job name
-#SBATCH -o /share/kuleshov/emm392/ProteinNPT/watch_logs/Mnpt_subs_reg_hybrid_3e-4_%j.out                  # Name of stdout output log file
-#SBATCH -e /share/kuleshov/emm392/ProteinNPT/watch_logs/Mnpt_subs_reg_hybrid_3e-4_%j.err                  # Name of stderr output log file
+#SBATCH -J xl_3_3e-4_900k_mnpt                # Job name
+#SBATCH -o /share/kuleshov/emm392/ProteinNPT/watch_logs/Mnpt_subs_xl_hybrid_3_3e-4_%j.out                  # Name of stdout output log file
+#SBATCH -e /share/kuleshov/emm392/ProteinNPT/watch_logs/Mnpt_subs_xl_hybrid_3_3e-4_%j.err                  # Name of stderr output log file
 #SBATCH -t 72:00:00                          # Time limit (hh:mm:ss)
 #SBATCH --partition=gpu             # Request partition for resource allocation
 #SBATCH --constraint="gpu-mid|gpu-high"
@@ -11,8 +11,8 @@
 #SBATCH --open-mode=append
 #SBATCH --requeue
 # SBATCH --array=48
-# SBATCH --array=22,27,48,53,116,117,118,158,161,196
-#SBATCH --array=1-271
+#SBATCH --array=22,27,48,53,116,117,118,158,161,196
+# SBATCH --array=1-271
 
 source ./config.sh
 #conda activate proteinnpt_env
@@ -24,10 +24,10 @@ export sequence_embeddings_folder=$MSAT_embeddings_folder # [MSAT_embeddings_fol
 
 export fold_variable_name='fold_random_5' #[fold_random_5 | fold_contiguous_5 | fold_modulo_5]
 export assay_index=$SLURM_ARRAY_TASK_ID #Replace with index of desired DMS assay in the ProteinGym reference file (`utils/proteingym`)
-export train_num_assay=500  #(labeld) assay sequeces  during training
-export eval_num_training=1000 #(labled) assay sequences during inference
+export train_num_assay=625  #(labeld) assay sequeces  during training
+export eval_num_training=1500 #(labled) assay sequences during inference
 export num_msa_training=384 #384 #$msa sequences during training
-export model_name_suffix='singles_900k_reg_hybrid_3e-4_'${train_num_assay}'_train_'${eval_num_training}'_eval_seqs_assay_'$assay_index #Give a name to the model
+export model_name_suffix=#'singles_900k_xl_hybrid_3_3e-4_'${train_num_assay}'_train_'${eval_num_training}'_eval_seqs_assay_'$assay_index #Give a name to the model
 
 
 python -q -X faulthandler train.py \
@@ -48,4 +48,5 @@ python -q -X faulthandler train.py \
     --training_num_assay_sequences_per_batch_per_gpu ${train_num_assay} \
     --eval_num_training_sequences_per_batch_per_gpu ${eval_num_training} \
     --num_MSA_sequences_per_training_instance ${num_msa_training} \
-    --max_learning_rate 0.0003
+    --max_learning_rate 0.0003 \
+    --attn_idxs 3 
