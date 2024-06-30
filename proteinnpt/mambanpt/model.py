@@ -56,11 +56,11 @@ class MambaNPTModel(nn.Module):
         self.deactivate_col_attention = False
         self.tranception_attention = False
 
-        #assert (
+        # assert (
         #    self.args.embed_dim % self.args.attention_heads == 0
-        #), "Embedding size {} needs to be a multiple of number of heads {}".format(
+        # ), "Embedding size {} needs to be a multiple of number of heads {}".format(
         #    self.args.embed_dim, self.args.attention_heads
-        #)
+        # )
         if (
             self.args.aa_embeddings == "MSA_Transformer"
             or args.aa_embeddings.startswith("ESM")
@@ -133,9 +133,9 @@ class MambaNPTModel(nn.Module):
             "use_fast_path": True,
         }
         attn_cfg = {
-                #'embed_dim': self.args.embed_dim,
-                'num_heads': self.args.attention_heads,
-                'mlp_dim': self.args.ffn_embed_dim
+            #'embed_dim': self.args.embed_dim,
+            "num_heads": self.args.attention_heads,
+            "mlp_dim": self.args.ffn_embed_dim,
         }
 
         # self.layers = nn.ModuleList(
@@ -165,7 +165,8 @@ class MambaNPTModel(nn.Module):
             hybrid=self.args.hybrid,
             vocab_size=self.alphabet_size,
             ssm_cfg=ssm_cfg,
-            attn_cfg = attn_cfg
+            attn_cfg=attn_cfg,
+            attn_idxs=self.args.attn_idxs,
         )
         self.layers = AxialCaduceusMixerModel(
             cad_config, device=self.device
@@ -294,7 +295,7 @@ class MambaNPTModel(nn.Module):
                 tokens.ndim
             )
             batch_size, seqlen = tokens.size()  # N, L (seqs with labels, seq length)
-            #print(f"Seqs with labels (N): {batch_size}, Seq length (L): {seqlen}")
+            # print(f"Seqs with labels (N): {batch_size}, Seq length (L): {seqlen}")
 
         if sequence_embeddings is not None:
             x = sequence_embeddings.to(self.device)
@@ -402,7 +403,7 @@ class MambaNPTModel(nn.Module):
             col_attn_weights = []
 
         # 1 x N x L x D -> N x L x 1 x D
-        #x = x.permute(1, 2, 0, 3)
+        # x = x.permute(1, 2, 0, 3)
         x, hidden_representations = self.layers(None, inputs_embeds=x)
         # for layer_idx, layer in enumerate(self.layers):
         #    x = layer(
@@ -417,7 +418,7 @@ class MambaNPTModel(nn.Module):
         #    if (layer_idx + 1) in repr_layers:
         #        hidden_representations[layer_idx + 1] = x.permute(2, 0, 1, 3)
         x = self.emb_layer_norm_after(x)
-        #x = x.permute(2, 0, 1, 3)  # N x L x 1 x D -> 1 x N x L x D
+        # x = x.permute(2, 0, 1, 3)  # N x L x 1 x D -> 1 x N x L x D
         assert x.shape == (
             1,
             num_sequences_with_target,
@@ -425,7 +426,7 @@ class MambaNPTModel(nn.Module):
             self.args.embed_dim,
         ), "Error with axial transformer"
         # last hidden representation should have layer norm applied
-        #if (layer_idx + 1) in repr_layers:
+        # if (layer_idx + 1) in repr_layers:
         #    hidden_representations[layer_idx + 1] = x
 
         # Loss over NPT MLM objective

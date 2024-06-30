@@ -22,6 +22,7 @@ class CaduceusConfig(PretrainedConfig):
         vocab_size: int = 50277,
         ssm_cfg: Optional[dict] = None,
         attn_cfg: Optional[dict] = None,
+        attn_idxs: Optional[list] = [],
         rms_norm: bool = True,
         residual_in_fp32: bool = True,
         fused_add_norm: bool = True,
@@ -46,6 +47,7 @@ class CaduceusConfig(PretrainedConfig):
         self.vocab_size = vocab_size
         self.ssm_cfg = ssm_cfg
         self.attn_cfg = attn_cfg
+        self.attn_idxs = attn_idxs
         self.rms_norm = rms_norm
         self.residual_in_fp32 = residual_in_fp32
         self.fused_add_norm = fused_add_norm

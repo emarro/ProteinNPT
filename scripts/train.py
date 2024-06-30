@@ -1,4 +1,5 @@
-import os,gc
+import os
+import gc
 import json
 import argparse
 import random
@@ -388,6 +389,7 @@ if __name__ == "__main__":
     parser.add_argument('--ffn_embed_dim', default=None, type=int, help='Feedforward embedding dimension')
     parser.add_argument('--attention_heads', default=None, type=int, help='Number of attention heads')
     parser.add_argument('--hybrid', default=False, action='store_true', help='Wheter to use a hybrid SSM arch')
+    parser.add_argument('--attn_idxs', default=None, action='append', type=int, help='Index of the attention layers in a MHA/SSM hybrid arch. To specify multiple MHA blocks add this argument multiple times')
     parser.add_argument('--conv_kernel_size', default=None, type=int, help='Size of convolutional kernel')
     parser.add_argument('--weight_decay', default=None, type=float, help='Weight decay to apply to network weights during training')
     parser.add_argument('--dropout', default=None, type=float, help='Dropout')

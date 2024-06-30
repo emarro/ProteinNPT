@@ -7,7 +7,8 @@ from functools import partial
 from typing import Optional, Tuple, Union
 
 import torch
-#from mamba_ssm.modules.mamba_simple import Mamba, Block
+
+# from mamba_ssm.modules.mamba_simple import Mamba, Block
 from mamba_ssm.modules.block import Block
 from mamba_ssm.modules.mamba_simple import Mamba
 from mamba_ssm.modules.mamba2 import Mamba2
@@ -30,8 +31,8 @@ except ImportError:
 
 from .configuration_caduceus import CaduceusConfig, MixedCaduceusConfig
 from .modeling_rcps import RCPSAddNormWrapper, RCPSEmbedding, RCPSLMHead, RCPSMambaBlock
-#from .esm_repo.esm.axial_attention import RowSelfAttention
-#from .esm_repo.esm.modules import NormalizedResidualBlock
+# from .esm_repo.esm.axial_attention import RowSelfAttention
+# from .esm_repo.esm.modules import NormalizedResidualBlock
 
 
 def create_block(
@@ -90,6 +91,7 @@ def create_axial_block(
     hybrid=False,
     ssm_cfg=None,
     attn_cfg=None,
+    attn_idxs=[],
     norm_epsilon=1e-5,
     rms_norm=False,
     residual_in_fp32=False,
@@ -114,7 +116,7 @@ def create_axial_block(
         "bidirectional_strategy": bidirectional_strategy,
         "bidirectional_weight_tie": bidirectional_weight_tie,
     }
-    if axis==1 and layer_idx < 2 and hybrid: #first row-wise model
+    if layer_idx in attn_idxs and hybrid:  # first row-wise model
         mixer_cls = partial(MHA, layer_idx=layer_idx, **attn_cfg, **factory_kwargs)
     else:
         mixer_cls = partial(
@@ -128,8 +130,13 @@ def create_axial_block(
     if d_intermediate == 0:
         mlp_cls = nn.Identity
     else:
-        mlp_cls = partial(GatedMLP, hidden_features=d_intermediate, out_features=d_model, **factory_kwargs)
-    #return Block(d_model, mixer_cls, residual_in_fp32=residual_in_fp32)
+        mlp_cls = partial(
+            GatedMLP,
+            hidden_features=d_intermediate,
+            out_features=d_model,
+            **factory_kwargs,
+        )
+    # return Block(d_model, mixer_cls, residual_in_fp32=residual_in_fp32)
     norm_cls = partial(
         nn.LayerNorm if not rms_norm else RMSNorm, eps=norm_epsilon, **factory_kwargs
     )
@@ -144,7 +151,6 @@ def create_axial_block(
     )
     block.layer_idx = layer_idx
     return block
-
 
 
 class BiMambaWrapper(nn.Module):
@@ -248,13 +254,12 @@ class AxialBiMambaWrapper(nn.Module):
         hidden_states: (B, R, C, D)
         Returns: same shape as hidden_states
         """
+
         def apply_mamba(x):
             out = self.mamba_fwd(x, inference_params=inference_params)
             if self.bidirectional:
                 out_rev = self.mamba_rev(
-                    x.flip(
-                        dims=(1,)
-                    ),  # Flip along the sequence length dimension
+                    x.flip(dims=(1,)),  # Flip along the sequence length dimension
                     inference_params=inference_params,
                 ).flip(dims=(1,))  # Flip back for combining with forward hidden states
                 if self.bidirectional_strategy == "add":
@@ -266,6 +271,7 @@ class AxialBiMambaWrapper(nn.Module):
                         f"`{self.bidirectional_strategy}` for bi-directionality not implemented!"
                     )
             return out
+
         batch, rows, columns, hidden_dim = hidden_states.size()
         if self.axis == 1:  # row mamba
             hidden_states = hidden_states.permute(1, 0, 2, 3)
@@ -275,19 +281,18 @@ class AxialBiMambaWrapper(nn.Module):
             axis_len = columns
         outs = []
         ## parllel
-        #outs = parallel_apply([apply_mamba for _ in range(axis_len)], hidden_states.unbind(0))
+        # outs = parallel_apply([apply_mamba for _ in range(axis_len)], hidden_states.unbind(0))
 
         ## reshape
         outs = apply_mamba(hidden_states.reshape(axis_len * batch, -1, hidden_dim))
         out = outs.reshape(axis_len, batch, -1, hidden_dim)
 
-
         ### forlop
-        #for axis_idx in range(axis_len):
-            #tmp_hidden_states = hidden_states[axis_idx, ...]
-            #out = apply_mamba(tmp_hidden_states)
-            #outs.append(out)
-        #out = torch.stack(outs, dim=0)
+        # for axis_idx in range(axis_len):
+        # tmp_hidden_states = hidden_states[axis_idx, ...]
+        # out = apply_mamba(tmp_hidden_states)
+        # outs.append(out)
+        # out = torch.stack(outs, dim=0)
         if self.axis == 1:  # row mamba
             out = out.permute(1, 0, 2, 3)
         elif self.axis == 2:  # [C, B, R, D]
@@ -479,11 +484,10 @@ class AxialCaduceusMixerModel(nn.Module):
             if layer_norm_fn is None or rms_norm_fn is None:
                 raise ImportError("Failed to import Triton LayerNorm / RMSNorm kernels")
         attn_cfg = {
-            'embed_dim': config.d_model,
-            'num_heads': 12,
-            'mlp_dim': 400,
+            "embed_dim": config.d_model,
+            "num_heads": 12,
+            "mlp_dim": 400,
         }
-
 
         self.layers = nn.ModuleList(
             [
@@ -494,6 +498,7 @@ class AxialCaduceusMixerModel(nn.Module):
                     hybrid=config.hybrid,
                     ssm_cfg=config.ssm_cfg,
                     attn_cfg=config.attn_cfg,
+                    attn_idxs=config.attn_idxs,
                     norm_epsilon=config.norm_epsilon,
                     rms_norm=config.rms_norm,
                     residual_in_fp32=config.residual_in_fp32,
