@@ -27,7 +27,7 @@ export assay_index=$SLURM_ARRAY_TASK_ID #Replace with index of desired DMS assay
 export train_num_assay=625  #(labeld) assay sequeces  during training
 export eval_num_training=1500 #(labled) assay sequences during inference
 export num_msa_training=384 #384 #$msa sequences during training
-export model_name_suffix=#'singles_900k_xl_hybrid_3_3e-4_'${train_num_assay}'_train_'${eval_num_training}'_eval_seqs_assay_'$assay_index #Give a name to the model
+export model_name_suffix='singles_900k_xl_hybrid_3_3e-4_'${train_num_assay}'_train_'${eval_num_training}'_eval_seqs_assay_'$assay_index #Give a name to the model
 
 
 python -q -X faulthandler train.py \
